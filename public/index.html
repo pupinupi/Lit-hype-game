@@ -11,12 +11,18 @@ button{padding:10px 20px;margin:10px;font-size:18px;}
 #game{display:none;}
 #board-container{position:relative;width:1024px;height:1024px;margin:20px auto;}
 #board{width:100%;height:100%;}
-.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition: all 0.7s ease;}
+.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition:all 0.7s ease;}
 .yellow{background:yellow;}
 .red{background:red;}
 .blue{background:blue;}
 .purple{background:purple;}
-#dice{font-size:50px;margin:10px;}
+#dice{font-size:50px;margin:10px;cursor:pointer;}
+#popup{
+  position:absolute;top:30%;left:50%;transform:translateX(-50%);
+  background:#222;padding:20px;border:2px solid #fff;border-radius:10px;display:none;
+  color:white; z-index:100;
+}
+#popup button{margin:5px;}
 </style>
 </head>
 <body>
@@ -43,6 +49,7 @@ button{padding:10px 20px;margin:10px;font-size:18px;}
 <div id="dice">🎲</div>
 <button onclick="roll()">Бросить кубик</button>
 <h3 id="info"></h3>
+<div id="popup"></div>
 </div>
 
 <script>
@@ -50,13 +57,25 @@ const socket=io();
 let currentRoom="";
 let playerColor="";
 let pieces={};
+let lastDice=0;
 
-// реальные координаты клеток
+// координаты клеток
 const positions=[
   [91,583],[102,450],[80,345],[99,232],[99,133],
   [218,97],[348,91],[500,88],[624,102],[762,91],
   [895,130],[912,204],[912,337],[909,425],[901,580],
   [771,588],[641,588],[483,594],[331,586],[218,594]
+];
+
+// текст Скандала
+const scandalTexts=[
+  "Перегрел аудиторию 🔥 -1 хайп",
+  "Громкий заголовок 🫣 -2 хайп",
+  "Это монтаж 😱 -3 хайп",
+  "Меня взломали #️⃣ -3 хайп всем",
+  "Подписчики в шоке 😮 -4 хайп",
+  "Удаляй пока не поздно 🤫 -5 хайп",
+  "Это контент, вы не понимаете 🙄 -5 хайп + пропусти ход"
 ];
 
 function join(){
@@ -72,11 +91,16 @@ function join(){
 }
 
 function roll(){
-  const diceNum=Math.floor(Math.random()*6)+1;
-  document.getElementById("dice").innerText="🎲 "+diceNum;
+  lastDice=Math.floor(Math.random()*6)+1;
+  const diceEl=document.getElementById("dice");
+  diceEl.innerText="🎲 "+lastDice;
+  diceEl.style.transform="rotate(0deg)";
+  let deg=Math.floor(Math.random()*720+360);
+  diceEl.animate([{transform:"rotate(0deg)"},{transform:`rotate(${deg}deg)`}],{duration:800,fill:"forwards"});
   socket.emit("rollDice",{room:currentRoom});
 }
 
+// Обновление игры
 socket.on("updateRoom", game=>{
   let text="";
   game.players.forEach(p=>{
@@ -93,6 +117,19 @@ socket.on("updateRoom", game=>{
       pieces[p.id].style.left=positions[p.position][0]+"px";
       pieces[p.id].style.top=positions[p.position][1]+"px";
     }
+
+    // проверка на Скандал
+    const cellTypes=[
+      "start","h3","h2","scandal","risk","h2","scandal","h3","h5",
+      "zero","jail","h3","risk","h3","skip","h2","scandal","h8",
+      "zero","h4"
+    ];
+    if(cellTypes[p.position]==="scandal" && p.id===game.players[game.turn].id){
+      showPopup(scandalTexts[Math.floor(Math.random()*scandalTexts.length)]);
+    }
+    if(cellTypes[p.position]==="risk" && p.id===game.players[game.turn].id){
+      showPopup("Риск! Кидаем кубик ещё раз!");
+    }
   });
 
   document.getElementById("players").innerHTML=text;
@@ -103,6 +140,14 @@ socket.on("updateRoom", game=>{
 socket.on("gameOver", winner=>{
   alert("Победил "+winner.name+" 🎉");
 });
+
+// окно Скандала/Риска
+function showPopup(text){
+  const popup=document.getElementById("popup");
+  popup.innerHTML=text;
+  popup.style.display="block";
+  setTimeout(()=>popup.style.display="none",3000);
+}
 </script>
 </body>
 </html>
