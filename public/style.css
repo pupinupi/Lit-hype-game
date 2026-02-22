@@ -1,0 +1,4 @@
+body{font-family:Arial;text-align:center;background:#111;color:white;}
+#board{position:relative;width:1024px;height:1024px;margin:auto;background:url("board.jpg");background-size:cover;}
+.token{width:30px;height:30px;border-radius:50%;position:absolute;transition:all 0.3s linear;}
+.colorPick{width:30px;height:30px;border-radius:50%;display:inline-block;margin:5px;cursor:pointer;border:2px solid white;}
