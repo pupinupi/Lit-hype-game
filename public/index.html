@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Литвин. Путь к хайпу</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+body { font-family: Arial; text-align: center; background:#111; color:white; }
+button { padding:10px 20px; font-size:18px; margin:10px; }
+input, select { padding:8px; margin:5px; }
+#game { display:none; }
+</style>
+</head>
+<body>
+
+<h1>Литвин. Путь к хайпу</h1>
+
+<div id="lobby">
+<input id="name" placeholder="Имя"><br>
+<input id="room" placeholder="Код комнаты"><br>
+
+<select id="color">
+<option value="yellow">Желтая</option>
+<option value="red">Красная</option>
+<option value="blue">Синяя</option>
+<option value="purple">Фиолетовая</option>
+</select><br>
+
+<button onclick="join()">Войти</button>
+</div>
+
+<div id="game">
+<h2 id="players"></h2>
+<button onclick="roll()">Бросить кубик</button>
+<h3 id="info"></h3>
+</div>
+
+<script>
+const socket = io();
+let currentRoom = "";
+
+function join(){
+  const name = document.getElementById("name").value;
+  const room = document.getElementById("room").value;
+  const color = document.getElementById("color").value;
+
+  if(!name || !room) return;
+
+  currentRoom = room;
+
+  socket.emit("joinRoom", { name, room, color });
+
+  document.getElementById("lobby").style.display = "none";
+  document.getElementById("game").style.display = "block";
+}
+
+function roll(){
+  socket.emit("rollDice", { room: currentRoom });
+}
+
+socket.on("updateRoom", (game)=>{
+  let text = "";
+  game.players.forEach(p=>{
+    text += p.name + " | Хайп: " + p.hype + "<br>";
+  });
+  document.getElementById("players").innerHTML = text;
+
+  const current = game.players[game.turn];
+  document.getElementById("info").innerText =
+    "Ход игрока: " + current.name;
+});
+
+socket.on("gameOver", (winner)=>{
+  alert("Победил " + winner.name + " 🎉");
+});
+</script>
+
+</body>
+</html>
