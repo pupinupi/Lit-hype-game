@@ -2,161 +2,81 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Литвин. Путь к хайпу</title>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<title>Литвин. Путь к хайпу - тест</title>
 <style>
 body{font-family:Arial;text-align:center;background:#111;color:white;}
-input,select{padding:8px;margin:5px;}
-button{padding:10px 20px;margin:10px;font-size:18px;}
-#game{display:none;}
+button{padding:10px 20px;font-size:18px;margin:10px;}
 #board-container{position:relative;width:1024px;height:1024px;margin:20px auto;}
 #board{width:100%;height:100%;}
-.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition:left 0.5s linear, top 0.5s linear;}
+.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition:left 0.4s linear, top 0.4s linear;}
 .yellow{background:yellow;}
 .red{background:red;}
 .blue{background:blue;}
 .purple{background:purple;}
-#dice-container{perspective:600px; margin:20px auto; width:100px; height:100px; cursor:pointer;}
-#dice{width:100px;height:100px;transform-style:preserve-3d;transition:transform 1s;}
-.face{position:absolute;width:100px;height:100px;background:white;border:2px solid black;font-size:50px;text-align:center;line-height:100px;}
-.face1{transform:rotateY(0deg) translateZ(50px);}
-.face2{transform:rotateY(180deg) translateZ(50px);}
-.face3{transform:rotateX(90deg) translateZ(50px);}
-.face4{transform:rotateX(-90deg) translateZ(50px);}
-.face5{transform:rotateY(90deg) translateZ(50px);}
-.face6{transform:rotateY(-90deg) translateZ(50px);}
-#popup{position:absolute;top:30%;left:50%;transform:translateX(-50%);
-background:#222;padding:20px;border:2px solid #fff;border-radius:10px;display:none;color:white;z-index:100;}
-.highlight{box-shadow:0 0 20px 5px gold;border-radius:5px;}
-button:disabled{opacity:0.5; cursor:not-allowed;}
+#dice-container{margin:20px auto; cursor:pointer;}
+.dice-face{display:inline-block;width:50px;height:50px;background:white;margin:2px;position:relative;border-radius:5px;}
+.dot{width:10px;height:10px;background:black;border-radius:50%;position:absolute;}
 </style>
 </head>
 <body>
-
-<h1>Литвин. Путь к хайпу</h1>
-
-<div id="lobby">
-<input id="name" placeholder="Имя"><br>
-<input id="room" placeholder="Код комнаты"><br>
-<select id="color">
-<option value="yellow">Желтая</option>
-<option value="red">Красная</option>
-<option value="blue">Синяя</option>
-<option value="purple">Фиолетовая</option>
-</select><br>
-<button onclick="join()">Войти</button>
-</div>
-
-<div id="game">
-<h3 id="players"></h3>
+<h1>Тест кубика и фишки</h1>
 <div id="board-container">
 <img src="board.jpg" id="board">
 </div>
 
 <div id="dice-container" onclick="roll()">
-<div id="dice">
-<div class="face face1">1</div>
-<div class="face face2">2</div>
-<div class="face face3">3</div>
-<div class="face face4">4</div>
-<div class="face face5">5</div>
-<div class="face face6">6</div>
-</div>
+<div id="dice" class="dice-face"></div>
 </div>
 
-<h3 id="info"></h3>
-<div id="popup"></div>
-</div>
+<button onclick="roll()">Бросить кубик</button>
 
 <script>
-const socket=io();
-let currentRoom="";
-let playerColor="";
-let playerId="";
-let pieces={};
-let skipTurnFlag=false;
-let positions=[[91,583],[102,450],[80,345],[99,232],[99,133],[218,97],[348,91],[500,88],[624,102],[762,91],[895,130],[912,204],[912,337],[909,425],[901,580],[771,588],[641,588],[483,594],[331,586],[218,594]];
-const cellTypes=["start","h3","h2","scandal","risk","h2","scandal","h3","h5","zero","jail","h3","risk","h3","skip","h2","scandal","h8","zero","h4"];
-const scandalTexts=["Перегрел аудиторию 🔥 -1 хайп","Громкий заголовок 🫣 -2 хайп","Это монтаж 😱 -3 хайп","Меня взломали #️⃣ -3 хайп всем","Подписчики в шоке 😮 -4 хайп","Удаляй пока не поздно 🤫 -5 хайп","Это контент, вы не понимаете 🙄 -5 хайп + пропусти ход"];
-
-function join(){
-  const name=document.getElementById("name").value;
-  const room=document.getElementById("room").value;
-  const color=document.getElementById("color").value;
-  if(!name||!room) return;
-  currentRoom=room;
-  playerColor=color;
-  socket.emit("joinRoom",{name,room,color});
-  document.getElementById("lobby").style.display="none";
-  document.getElementById("game").style.display="block";
-}
+const positions=[[91,583],[102,450],[80,345],[99,232],[99,133],[218,97],[348,91],[500,88],[624,102],[762,91],[895,130],[912,204],[912,337],[909,425],[901,580],[771,588],[641,588],[483,594],[331,586],[218,594]];
+let piece=document.createElement("div");
+piece.className="piece yellow";
+piece.style.left=positions[0][0]+"px";
+piece.style.top=positions[0][1]+"px";
+document.getElementById("board-container").appendChild(piece);
+let posIndex=0;
 
 function roll(){
-  if(skipTurnFlag) return;
   const diceValue=Math.floor(Math.random()*6)+1;
-  rotateDice(diceValue);
-  socket.emit("rollDice",{room:currentRoom});
+  drawDice(diceValue);
+  movePiece(diceValue);
 }
 
-function rotateDice(n){
+// рисуем точки на кубике
+function drawDice(n){
   const dice=document.getElementById("dice");
-  let x=0, y=0;
-  switch(n){
-    case 1: x=0;y=0; break;
-    case 2: x=180;y=0; break;
-    case 3: x=90;y=0; break;
-    case 4: x=-90;y=0; break;
-    case 5: x=0;y=90; break;
-    case 6: x=0;y=-90; break;
-  }
-  dice.style.transform=`rotateX(${x}deg) rotateY(${y}deg)`;
-}
-
-// сервер обновляет игру
-socket.on("updateRoom", game=>{
-  let text="";
-  skipTurnFlag=false;
-  game.players.forEach(p=>{
-    text+=p.name+" | Хайп: "+p.hype+"<br>";
-    if(!pieces[p.id]){
-      const div=document.createElement("div");
-      div.className="piece "+p.color;
-      div.style.left=positions[p.position][0]+"px";
-      div.style.top=positions[p.position][1]+"px";
-      document.getElementById("board-container").appendChild(div);
-      pieces[p.id]=div;
-    }
-    else movePieceSmooth(p.id, positions[p.position]);
-
-    if(p.skip && p.id===playerId) skipTurnFlag=true;
+  dice.innerHTML="";
+  const dotPositions=[
+    [[20,20]], //1
+    [[10,10],[30,30]], //2
+    [[10,10],[20,20],[30,30]], //3
+    [[10,10],[10,30],[30,10],[30,30]], //4
+    [[10,10],[10,30],[20,20],[30,10],[30,30]], //5
+    [[10,10],[10,20],[10,30],[30,10],[30,20],[30,30]] //6
+  ];
+  dotPositions[n-1].forEach(p=>{
+    let dot=document.createElement("div");
+    dot.className="dot";
+    dot.style.left=p[0]+"px";
+    dot.style.top=p[1]+"px";
+    dice.appendChild(dot);
   });
-  document.getElementById("players").innerHTML=text;
-  const current=game.players[game.turn];
-  document.getElementById("info").innerText="Ход игрока: "+current.name;
-  highlightCell(current.position);
-});
-
-function movePieceSmooth(id,target){
-  const el=pieces[id];
-  el.style.left=target[0]+"px";
-  el.style.top=target[1]+"px";
 }
 
-function highlightCell(pos){
-  const board=document.getElementById("board");
-  board.classList.remove("highlight");
-  setTimeout(()=>board.classList.add("highlight"),100);
+// плавный ход фишки по каждой клетке
+function movePiece(steps){
+  let i=0;
+  let interval=setInterval(()=>{
+    if(i>=steps || posIndex>=positions.length-1){clearInterval(interval); return;}
+    posIndex++;
+    piece.style.left=positions[posIndex][0]+"px";
+    piece.style.top=positions[posIndex][1]+"px";
+    i++;
+  },400);
 }
-
-function showPopup(text){
-  const popup=document.getElementById("popup");
-  popup.innerText=text;
-  popup.style.display="block";
-  setTimeout(()=>popup.style.display="none",3000);
-}
-
-socket.on("showPopup", text=>showPopup(text));
-socket.on("gameOver", winner=>alert("Победил "+winner.name+" 🎉"));
 </script>
 </body>
 </html>
