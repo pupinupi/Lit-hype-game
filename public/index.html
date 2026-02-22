@@ -11,19 +11,24 @@ button{padding:10px 20px;margin:10px;font-size:18px;}
 #game{display:none;}
 #board-container{position:relative;width:1024px;height:1024px;margin:20px auto;}
 #board{width:100%;height:100%;}
-
-.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition:all 0.4s ease;}
+.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition:left 0.5s linear, top 0.5s linear;}
 .yellow{background:yellow;}
 .red{background:red;}
 .blue{background:blue;}
 .purple{background:purple;}
-
-#dice-container{position:relative;width:100px;height:100px;margin:20px auto;}
-#dice{width:100px;height:100px;transition:transform 0.6s;}
-#dice img{width:100%;height:100%;}
+#dice-container{perspective:600px; margin:20px auto; width:100px; height:100px; cursor:pointer;}
+#dice{width:100px;height:100px;transform-style:preserve-3d;transition:transform 1s;}
+.face{position:absolute;width:100px;height:100px;background:white;border:2px solid black;font-size:50px;text-align:center;line-height:100px;}
+.face1{transform:rotateY(0deg) translateZ(50px);}
+.face2{transform:rotateY(180deg) translateZ(50px);}
+.face3{transform:rotateX(90deg) translateZ(50px);}
+.face4{transform:rotateX(-90deg) translateZ(50px);}
+.face5{transform:rotateY(90deg) translateZ(50px);}
+.face6{transform:rotateY(-90deg) translateZ(50px);}
 #popup{position:absolute;top:30%;left:50%;transform:translateX(-50%);
 background:#222;padding:20px;border:2px solid #fff;border-radius:10px;display:none;color:white;z-index:100;}
 .highlight{box-shadow:0 0 20px 5px gold;border-radius:5px;}
+button:disabled{opacity:0.5; cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -48,12 +53,16 @@ background:#222;padding:20px;border:2px solid #fff;border-radius:10px;display:no
 <img src="board.jpg" id="board">
 </div>
 
-<div id="dice-container">
-<img id="dice" src="dice1.png">
+<div id="dice-container" onclick="roll()">
+<div id="dice">
+<div class="face face1">1</div>
+<div class="face face2">2</div>
+<div class="face face3">3</div>
+<div class="face face4">4</div>
+<div class="face face5">5</div>
+<div class="face face6">6</div>
 </div>
-
-<button onclick="roll()">Бросить кубик</button>
-<button onclick="skipTurn()">Пропустить ход</button>
+</div>
 
 <h3 id="info"></h3>
 <div id="popup"></div>
@@ -63,8 +72,9 @@ background:#222;padding:20px;border:2px solid #fff;border-radius:10px;display:no
 const socket=io();
 let currentRoom="";
 let playerColor="";
-let pieces={};
 let playerId="";
+let pieces={};
+let skipTurnFlag=false;
 let positions=[[91,583],[102,450],[80,345],[99,232],[99,133],[218,97],[348,91],[500,88],[624,102],[762,91],[895,130],[912,204],[912,337],[909,425],[901,580],[771,588],[641,588],[483,594],[331,586],[218,594]];
 const cellTypes=["start","h3","h2","scandal","risk","h2","scandal","h3","h5","zero","jail","h3","risk","h3","skip","h2","scandal","h8","zero","h4"];
 const scandalTexts=["Перегрел аудиторию 🔥 -1 хайп","Громкий заголовок 🫣 -2 хайп","Это монтаж 😱 -3 хайп","Меня взломали #️⃣ -3 хайп всем","Подписчики в шоке 😮 -4 хайп","Удаляй пока не поздно 🤫 -5 хайп","Это контент, вы не понимаете 🙄 -5 хайп + пропусти ход"];
@@ -82,18 +92,30 @@ function join(){
 }
 
 function roll(){
-  const dice=Math.floor(Math.random()*6)+1;
-  document.getElementById("dice").src="dice"+dice+".png";
+  if(skipTurnFlag) return;
+  const diceValue=Math.floor(Math.random()*6)+1;
+  rotateDice(diceValue);
   socket.emit("rollDice",{room:currentRoom});
 }
 
-function skipTurn(){
-  socket.emit("skipTurn",{room:currentRoom});
+function rotateDice(n){
+  const dice=document.getElementById("dice");
+  let x=0, y=0;
+  switch(n){
+    case 1: x=0;y=0; break;
+    case 2: x=180;y=0; break;
+    case 3: x=90;y=0; break;
+    case 4: x=-90;y=0; break;
+    case 5: x=0;y=90; break;
+    case 6: x=0;y=-90; break;
+  }
+  dice.style.transform=`rotateX(${x}deg) rotateY(${y}deg)`;
 }
 
-// Обновление игры
+// сервер обновляет игру
 socket.on("updateRoom", game=>{
   let text="";
+  skipTurnFlag=false;
   game.players.forEach(p=>{
     text+=p.name+" | Хайп: "+p.hype+"<br>";
     if(!pieces[p.id]){
@@ -104,35 +126,28 @@ socket.on("updateRoom", game=>{
       document.getElementById("board-container").appendChild(div);
       pieces[p.id]=div;
     }
-    else{
-      // плавное движение по всем промежуточным клеткам
-      movePieceSmooth(p.id, positions[p.position]);
-    }
+    else movePieceSmooth(p.id, positions[p.position]);
+
+    if(p.skip && p.id===playerId) skipTurnFlag=true;
   });
   document.getElementById("players").innerHTML=text;
-
   const current=game.players[game.turn];
   document.getElementById("info").innerText="Ход игрока: "+current.name;
-
-  // подсветка клетки
   highlightCell(current.position);
 });
 
-// кубик и ходы
-function movePieceSmooth(id, target){
+function movePieceSmooth(id,target){
   const el=pieces[id];
   el.style.left=target[0]+"px";
   el.style.top=target[1]+"px";
 }
 
-// подсветка клетки
 function highlightCell(pos){
   const board=document.getElementById("board");
   board.classList.remove("highlight");
   setTimeout(()=>board.classList.add("highlight"),100);
 }
 
-// скандал/риск
 function showPopup(text){
   const popup=document.getElementById("popup");
   popup.innerText=text;
