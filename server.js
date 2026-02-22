@@ -58,15 +58,11 @@ io.on("connection", socket => {
   socket.on("rollDice", ({room, value}) => {
 
     const game = rooms[room];
-    if(!game) return;
-
-    if(game.locked) return; // защита от двойного броска
+    if(!game || game.locked) return;
 
     const player = game.players[game.turn];
-    if(!player) return;
-    if(player.id !== socket.id) return;
+    if(!player || player.id !== socket.id) return;
 
-    // пропуск
     if(player.skip){
       player.skip = false;
       nextTurn(game);
@@ -76,7 +72,6 @@ io.on("connection", socket => {
 
     game.locked = true;
 
-    // движение просто считаем
     player.position += value;
     if(player.position >= cellTypes.length){
       player.position = cellTypes.length - 1;
@@ -93,7 +88,6 @@ io.on("connection", socket => {
     }
 
     nextTurn(game);
-
     game.locked = false;
 
     io.to(room).emit("updateRoom", game);
