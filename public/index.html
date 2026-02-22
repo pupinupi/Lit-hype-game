@@ -3,159 +3,120 @@
 <head>
 <meta charset="UTF-8">
 <title>Литвин. Путь к хайпу</title>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 <style>
 body{font-family:Arial;text-align:center;background:#111;color:white;}
-#lobby, #game{margin:20px;}
-button{padding:10px 20px;margin:5px;font-size:16px;}
-button:disabled{opacity:0.5;cursor:not-allowed;}
-#board-container{position:relative;width:1024px;height:1024px;margin:20px auto;}
-#board{width:100%;height:100%;}
-.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition:left 0.4s linear, top 0.4s linear;}
-.yellow{background:yellow;}
-.red{background:red;}
-.blue{background:blue;}
-.purple{background:purple;}
-#dice-container{margin:20px auto; cursor:pointer;}
-.dice-face{display:inline-block;width:50px;height:50px;background:white;margin:2px;position:relative;border-radius:5px;}
-.dot{width:10px;height:10px;background:black;border-radius:50%;position:absolute;}
-#popup{position:absolute;top:30%;left:50%;transform:translateX(-50%);
-background:#222;padding:20px;border:2px solid #fff;border-radius:10px;display:none;color:white;z-index:100;}
-.color-choice{display:inline-block;width:40px;height:40px;border-radius:50%;margin:5px;cursor:pointer;border:3px solid #fff;}
-.selected{box-shadow:0 0 10px 5px gold;}
-.highlight{box-shadow:0 0 20px 5px gold;border-radius:5px;}
+#board{
+  position:relative;
+  width:1024px;
+  height:1024px;
+  margin:auto;
+  background:url("board.jpg");
+  background-size:cover;
+}
+.token{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  position:absolute;
+  transition: all 0.4s linear;
+}
+#dice{
+  font-size:40px;
+  margin:20px;
+}
+.colorPick{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  display:inline-block;
+  cursor:pointer;
+  margin:5px;
+}
 </style>
 </head>
 <body>
-<h1>Литвин. Путь к хайпу</h1>
 
 <div id="lobby">
-<input id="name" placeholder="Имя"><br>
-<input id="room" placeholder="Код комнаты"><br>
-<h3>Выберите цвет фишки</h3>
-<div id="colors">
-<div class="color-choice yellow" onclick="chooseColor('yellow')"></div>
-<div class="color-choice red" onclick="chooseColor('red')"></div>
-<div class="color-choice blue" onclick="chooseColor('blue')"></div>
-<div class="color-choice purple" onclick="chooseColor('purple')"></div>
-</div>
-<button onclick="join()">Войти</button>
+  <h2>Литвин. Путь к хайпу</h2>
+  <input id="name" placeholder="Имя"><br><br>
+  <input id="room" placeholder="Код комнаты"><br><br>
+
+  <div>
+    <div class="colorPick" style="background:yellow" onclick="selectColor('yellow')"></div>
+    <div class="colorPick" style="background:red" onclick="selectColor('red')"></div>
+    <div class="colorPick" style="background:blue" onclick="selectColor('blue')"></div>
+    <div class="colorPick" style="background:purple" onclick="selectColor('purple')"></div>
+  </div><br>
+
+  <button onclick="join()">Войти</button>
 </div>
 
-<div id="game">
-<h3 id="players"></h3>
-<div id="board-container">
-<img src="board.jpg" id="board">
-</div>
-<div id="dice-container" onclick="roll()">
-<div id="dice" class="dice-face"></div>
-</div>
-<button id="roll-btn" onclick="roll()">Бросить кубик</button>
-<h3 id="info"></h3>
-<div id="popup"></div>
+<div id="game" style="display:none;">
+  <div id="board"></div>
+  <div id="dice">🎲</div>
+  <button onclick="rollDice()">Бросить кубик</button>
 </div>
 
 <script>
-const socket=io();
-let playerColor="";
-let currentRoom="";
-let playerId="";
-let pieces={};
-let skipTurnFlag=false;
-let positions=[[91,583],[102,450],[80,345],[99,232],[99,133],[218,97],[348,91],[500,88],[624,102],[762,91],[895,130],[912,204],[912,337],[909,425],[901,580],[771,588],[641,588],[483,594],[331,586],[218,594]];
-const cellTypes=["start","h3","h2","scandal","risk","h2","scandal","h3","h5","zero","jail","h3","risk","h3","skip","h2","scandal","h8","zero","h4"];
-const scandalTexts=["Перегрел аудиторию 🔥 -1","Громкий заголовок 🫣 -2","Это монтаж 😱 -3","Меня взломали #️⃣ -3 всем","Подписчики в шоке 😮 -4","Удаляй пока не поздно 🤫 -5","Это контент, вы не понимаете 🙄 -5 + пропусти ход"];
+const socket = io();
 
-let chosenDiv=null;
-function chooseColor(color){
-  if(chosenDiv) chosenDiv.classList.remove("selected");
-  const div=document.querySelector(`.color-choice.${color}`);
-  div.classList.add("selected");
-  chosenDiv=div;
-  playerColor=color;
-}
+let myId=null;
+let gameState=null;
+let myColor="yellow";
+
+const positions = [
+{x:110,y:580},{x:110,y:500},{x:110,y:420},{x:110,y:340},{x:110,y:260},
+{x:110,y:180},{x:200,y:120},{x:320,y:100},{x:450,y:100},{x:580,y:100},
+{x:700,y:100},{x:820,y:120},{x:900,y:200},{x:900,y:320},{x:900,y:440},
+{x:820,y:580},{x:700,y:580},{x:580,y:580},{x:450,y:580},{x:320,y:580}
+];
+
+function selectColor(c){ myColor=c; }
 
 function join(){
-  const name=document.getElementById("name").value;
-  const room=document.getElementById("room").value;
-  if(!name||!room||!playerColor) return alert("Выберите имя, комнату и цвет!");
-  currentRoom=room;
-  socket.emit("joinRoom",{name,room,color:playerColor});
+  socket.emit("joinRoom",{
+    name:document.getElementById("name").value,
+    room:document.getElementById("room").value,
+    color:myColor
+  });
   document.getElementById("lobby").style.display="none";
   document.getElementById("game").style.display="block";
 }
 
-function roll(){
-  if(skipTurnFlag) return;
-  const diceValue=Math.floor(Math.random()*6)+1;
-  drawDice(diceValue);
-  socket.emit("rollDice",{room:currentRoom, value:diceValue});
-}
+socket.on("playerId", id=> myId=id);
 
-function drawDice(n){
-  const dice=document.getElementById("dice");
-  dice.innerHTML="";
-  const dots=[
-    [[20,20]],
-    [[10,10],[30,30]],
-    [[10,10],[20,20],[30,30]],
-    [[10,10],[10,30],[30,10],[30,30]],
-    [[10,10],[10,30],[20,20],[30,10],[30,30]],
-    [[10,10],[10,20],[10,30],[30,10],[30,20],[30,30]]
-  ];
-  dots[n-1].forEach(p=>{
-    let dot=document.createElement("div");
-    dot.className="dot";
-    dot.style.left=p[0]+"px";
-    dot.style.top=p[1]+"px";
-    dice.appendChild(dot);
-  });
-}
-
-socket.on("updateRoom", game=>{
-  let text="";
-  skipTurnFlag=false;
-  game.players.forEach(p=>{
-    text+=p.name+" | Хайп: "+p.hype+"<br>";
-    if(!pieces[p.id]){
-      const div=document.createElement("div");
-      div.className="piece "+p.color;
-      div.style.left=positions[p.position][0]+"px";
-      div.style.top=positions[p.position][1]+"px";
-      document.getElementById("board-container").appendChild(div);
-      pieces[p.id]=div;
-    } else movePieceSmooth(p.id, positions[p.position]);
-
-    if(p.skip && p.id===playerId) skipTurnFlag=true;
-  });
-  document.getElementById("players").innerHTML=text;
-  const current=game.players[game.turn];
-  document.getElementById("info").innerText="Ход игрока: "+current.name;
-  highlightCell(current.position);
+socket.on("updateRoom", state=>{
+  gameState=state;
+  render();
 });
 
-function movePieceSmooth(id,target){
-  const el=pieces[id];
-  el.style.left=target[0]+"px";
-  el.style.top=target[1]+"px";
+socket.on("showPopup", text=> alert(text));
+socket.on("gameOver", w=> alert("Победил: "+w.name));
+
+function rollDice(){
+  if(!gameState) return;
+  const player = gameState.players[gameState.turn];
+  if(player.id!==myId) return;
+  const value=Math.floor(Math.random()*6)+1;
+  document.getElementById("dice").innerText=value;
+  socket.emit("rollDice",{room:document.getElementById("room").value,value});
 }
 
-function highlightCell(pos){
+function render(){
   const board=document.getElementById("board");
-  board.classList.remove("highlight");
-  setTimeout(()=>board.classList.add("highlight"),100);
+  board.innerHTML="";
+  gameState.players.forEach(p=>{
+    const t=document.createElement("div");
+    t.className="token";
+    t.style.background=p.color;
+    const pos=positions[p.position];
+    t.style.left=pos.x+"px";
+    t.style.top=pos.y+"px";
+    board.appendChild(t);
+  });
 }
-
-function showPopup(text){
-  const popup=document.getElementById("popup");
-  popup.innerText=text;
-  popup.style.display="block";
-  setTimeout(()=>popup.style.display="none",3000);
-}
-
-socket.on("showPopup", text=>showPopup(text));
-socket.on("gameOver", winner=>alert("Победил "+winner.name+" 🎉"));
-
 </script>
+
 </body>
 </html>
