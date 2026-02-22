@@ -5,17 +5,18 @@
 <title>Литвин. Путь к хайпу</title>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <style>
-body { font-family: Arial; text-align: center; background:#111; color:white; }
-button { padding:10px 20px; font-size:18px; margin:10px; }
-input, select { padding:8px; margin:5px; }
-#game { display:none; }
-#board-container { position:relative; width:1024px; height:1024px; margin:20px auto; }
-#board { width:100%; height:100%; }
-.piece { width:30px; height:30px; border-radius:50%; position:absolute; transition: all 0.5s ease; }
-.yellow { background: yellow; }
-.red { background: red; }
-.blue { background: blue; }
-.purple { background: purple; }
+body{font-family:Arial;text-align:center;background:#111;color:white;}
+input, select{padding:8px;margin:5px;}
+button{padding:10px 20px;margin:10px;font-size:18px;}
+#game{display:none;}
+#board-container{position:relative;width:1024px;height:1024px;margin:20px auto;}
+#board{width:100%;height:100%;}
+.piece{width:30px;height:30px;border-radius:50%;position:absolute;transition: all 0.7s ease;}
+.yellow{background:yellow;}
+.red{background:red;}
+.blue{background:blue;}
+.purple{background:purple;}
+#dice{font-size:50px;margin:10px;}
 </style>
 </head>
 <body>
@@ -25,14 +26,12 @@ input, select { padding:8px; margin:5px; }
 <div id="lobby">
 <input id="name" placeholder="Имя"><br>
 <input id="room" placeholder="Код комнаты"><br>
-
 <select id="color">
 <option value="yellow">Желтая</option>
 <option value="red">Красная</option>
 <option value="blue">Синяя</option>
 <option value="purple">Фиолетовая</option>
 </select><br>
-
 <button onclick="join()">Войти</button>
 </div>
 
@@ -41,64 +40,69 @@ input, select { padding:8px; margin:5px; }
 <div id="board-container">
 <img src="board.jpg" id="board">
 </div>
+<div id="dice">🎲</div>
 <button onclick="roll()">Бросить кубик</button>
 <h3 id="info"></h3>
 </div>
 
 <script>
-const socket = io();
-let currentRoom = "";
-let playerColor = "";
-let pieces = {};
-let positions = [
-  [1000,600],[950,500],[900,450],[850,400],[800,350],[750,300],[700,250],[650,200],[600,150],[550,100],
-  [500,50],[450,100],[400,150],[350,200],[300,250],[250,300],[200,350],[150,400],[100,450],[50,500]
+const socket=io();
+let currentRoom="";
+let playerColor="";
+let pieces={};
+
+// реальные координаты клеток
+const positions=[
+  [91,583],[102,450],[80,345],[99,232],[99,133],
+  [218,97],[348,91],[500,88],[624,102],[762,91],
+  [895,130],[912,204],[912,337],[909,425],[901,580],
+  [771,588],[641,588],[483,594],[331,586],[218,594]
 ];
 
 function join(){
-  const name = document.getElementById("name").value;
-  const room = document.getElementById("room").value;
-  const color = document.getElementById("color").value;
-  if(!name || !room) return;
-  currentRoom = room;
-  playerColor = color;
-  socket.emit("joinRoom", { name, room, color });
-  document.getElementById("lobby").style.display = "none";
-  document.getElementById("game").style.display = "block";
+  const name=document.getElementById("name").value;
+  const room=document.getElementById("room").value;
+  const color=document.getElementById("color").value;
+  if(!name||!room) return;
+  currentRoom=room;
+  playerColor=color;
+  socket.emit("joinRoom",{name,room,color});
+  document.getElementById("lobby").style.display="none";
+  document.getElementById("game").style.display="block";
 }
 
 function roll(){
-  socket.emit("rollDice", { room: currentRoom });
+  const diceNum=Math.floor(Math.random()*6)+1;
+  document.getElementById("dice").innerText="🎲 "+diceNum;
+  socket.emit("rollDice",{room:currentRoom});
 }
 
-socket.on("updateRoom", (game)=>{
-  let text = "";
+socket.on("updateRoom", game=>{
+  let text="";
   game.players.forEach(p=>{
-    text += p.name + " | Хайп: " + p.hype + "<br>";
+    text+=p.name+" | Хайп: "+p.hype+"<br>";
 
     if(!pieces[p.id]){
-      const div = document.createElement("div");
-      div.className = "piece " + p.color;
-      div.style.left = positions[p.position][0]+"px";
-      div.style.top = positions[p.position][1]+"px";
+      const div=document.createElement("div");
+      div.className="piece "+p.color;
+      div.style.left=positions[p.position][0]+"px";
+      div.style.top=positions[p.position][1]+"px";
       document.getElementById("board-container").appendChild(div);
-      pieces[p.id] = div;
+      pieces[p.id]=div;
     } else {
-      pieces[p.id].style.left = positions[p.position][0]+"px";
-      pieces[p.id].style.top = positions[p.position][1]+"px";
+      pieces[p.id].style.left=positions[p.position][0]+"px";
+      pieces[p.id].style.top=positions[p.position][1]+"px";
     }
   });
-  document.getElementById("players").innerHTML = text;
 
-  const current = game.players[game.turn];
-  document.getElementById("info").innerText =
-    "Ход игрока: " + current.name;
+  document.getElementById("players").innerHTML=text;
+  const current=game.players[game.turn];
+  document.getElementById("info").innerText="Ход игрока: "+current.name;
 });
 
-socket.on("gameOver", (winner)=>{
-  alert("Победил " + winner.name + " 🎉");
+socket.on("gameOver", winner=>{
+  alert("Победил "+winner.name+" 🎉");
 });
 </script>
-
 </body>
 </html>
