@@ -4,149 +4,32 @@
 <meta charset="UTF-8">
 <title>Литвин. Путь к хайпу</title>
 <script src="/socket.io/socket.io.js"></script>
-
-<style>
-body{
-  font-family:Arial;
-  text-align:center;
-  background:#111;
-  color:white;
-}
-
-#board{
-  position:relative;
-  width:1024px;
-  height:1024px;
-  margin:auto;
-  background:url("board.jpg");
-  background-size:cover;
-}
-
-.token{
-  width:30px;
-  height:30px;
-  border-radius:50%;
-  position:absolute;
-  transition:all 0.3s linear;
-}
-
-.colorPick{
-  width:30px;
-  height:30px;
-  border-radius:50%;
-  display:inline-block;
-  margin:5px;
-  cursor:pointer;
-  border:2px solid white;
-}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div id="lobby">
-  <h2>Литвин. Путь к хайпу</h2>
-
-  <input id="nameInput" placeholder="Имя"><br><br>
-  <input id="roomInput" placeholder="Код комнаты"><br><br>
-
-  <div>
-    <div class="colorPick" style="background:yellow" onclick="setColor('yellow')"></div>
-    <div class="colorPick" style="background:red" onclick="setColor('red')"></div>
-    <div class="colorPick" style="background:blue" onclick="setColor('blue')"></div>
-    <div class="colorPick" style="background:purple" onclick="setColor('purple')"></div>
-  </div><br>
-
-  <button onclick="joinRoom()">Войти</button>
+<h2>Литвин. Путь к хайпу</h2>
+<input id="nameInput" placeholder="Имя"><br><br>
+<input id="roomInput" placeholder="Код комнаты"><br><br>
+<div>
+<div class="colorPick" style="background:yellow" onclick="setColor('yellow')"></div>
+<div class="colorPick" style="background:red" onclick="setColor('red')"></div>
+<div class="colorPick" style="background:blue" onclick="setColor('blue')"></div>
+<div class="colorPick" style="background:purple" onclick="setColor('purple')"></div>
+</div><br>
+<button onclick="joinRoom()">Войти</button>
 </div>
 
 <div id="game" style="display:none;">
-  <h3 id="turnInfo"></h3>
-  <div id="board"></div>
-  <h2 id="dice">🎲</h2>
-  <button onclick="rollDice()">Бросить кубик</button>
+<h3 id="turnInfo"></h3>
+<div id="board"></div>
+<h2 id="dice">🎲</h2>
+<button onclick="rollDice()">Бросить кубик</button>
+<h3>Хайп:</h3>
+<div id="hypeList"></div>
+<div id="cardInfo"></div>
 </div>
 
-<script>
-const socket = io();
-
-let myId=null;
-let gameState=null;
-let myColor="yellow";
-let currentRoom=null;
-
-const positions = [
-{x:110,y:580},{x:110,y:500},{x:110,y:420},{x:110,y:340},{x:110,y:260},
-{x:110,y:180},{x:200,y:120},{x:320,y:100},{x:450,y:100},{x:580,y:100},
-{x:700,y:100},{x:820,y:120},{x:900,y:200},{x:900,y:320},{x:900,y:440},
-{x:820,y:580},{x:700,y:580},{x:580,y:580},{x:450,y:580},{x:320,y:580}
-];
-
-function setColor(c){
-  myColor=c;
-}
-
-function joinRoom(){
-  const name=document.getElementById("nameInput").value;
-  const room=document.getElementById("roomInput").value;
-
-  if(!name || !room){
-    alert("Введите имя и код комнаты");
-    return;
-  }
-
-  currentRoom=room;
-
-  socket.emit("joinRoom",{name,room,color:myColor});
-
-  document.getElementById("lobby").style.display="none";
-  document.getElementById("game").style.display="block";
-}
-
-socket.on("playerId",id=>myId=id);
-
-socket.on("updateRoom",state=>{
-  gameState=state;
-  render();
-});
-
-socket.on("showPopup",text=>alert(text));
-socket.on("gameOver",w=>alert("Победил: "+w.name));
-
-function rollDice(){
-  if(!gameState) return;
-
-  const player=gameState.players[gameState.turn];
-  if(player.id!==myId) return;
-
-  const value=Math.floor(Math.random()*6)+1;
-
-  document.getElementById("dice").innerText=value;
-
-  socket.emit("rollDice",{room:currentRoom,value});
-}
-
-function render(){
-  const board=document.getElementById("board");
-  board.innerHTML="";
-
-  if(!gameState) return;
-
-  document.getElementById("turnInfo").innerText=
-    "Ход: "+gameState.players[gameState.turn].name;
-
-  gameState.players.forEach(p=>{
-    const token=document.createElement("div");
-    token.className="token";
-    token.style.background=p.color;
-
-    const pos=positions[p.position];
-    token.style.left=pos.x+"px";
-    token.style.top=pos.y+"px";
-
-    board.appendChild(token);
-  });
-}
-</script>
-
+<script src="script.js"></script>
 </body>
 </html>
