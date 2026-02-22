@@ -5,8 +5,16 @@ const { Server } = require("socket.io");
 
 const app = express();
 app.use(cors());
-app.use(express.static("public"));
+
+// 👉 Отдаём сайт из папки public
+app.use(express.static(__dirname + "/public"));
+
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/index.html");
+});
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: { origin: "*" }
 });
@@ -43,12 +51,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("rollDice", ({ room }) => {
+
     const game = rooms[room];
     if (!game) return;
 
     const player = game.players[game.turn];
     if (!player || player.id !== socket.id) return;
 
+    // если пропуск хода
     if (player.skip) {
       player.skip = false;
       game.turn = (game.turn + 1) % game.players.length;
@@ -57,6 +67,7 @@ io.on("connection", (socket) => {
     }
 
     const dice = Math.floor(Math.random() * 6) + 1;
+
     player.position = (player.position + dice) % 20;
 
     handleCell(player, game);
@@ -67,6 +78,7 @@ io.on("connection", (socket) => {
     }
 
     game.turn = (game.turn + 1) % game.players.length;
+
     io.to(room).emit("updateRoom", game);
   });
 
@@ -90,31 +102,37 @@ function handleCell(player, game) {
   const cell = cells[player.position];
   player.lastTurnGain = 0;
 
+  // + хайп
   if (cell.startsWith("h")) {
     const value = parseInt(cell.replace("h",""));
     player.hype += value;
     player.lastTurnGain += value;
   }
 
+  // - весь хайп
   if (cell === "zero") {
     player.hype = 0;
   }
 
+  // тюрьма (-50% + пропуск)
   if (cell === "jail") {
     player.hype = Math.floor(player.hype / 2);
     player.skip = true;
   }
 
+  // пропуск хода
   if (cell === "skip") {
     player.skip = true;
   }
 
+  // риск
   if (cell === "risk") {
     const r = Math.floor(Math.random() * 6) + 1;
     if (r <= 3) player.hype -= 5;
     else player.hype += 5;
   }
 
+  // скандал
   if (cell === "scandal") {
     const penalties = [-1,-2,-3,-3,-4,-5,-5];
     const random = penalties[Math.floor(Math.random()*penalties.length)];
@@ -127,11 +145,12 @@ function handleCell(player, game) {
 
   if (player.hype < 0) player.hype = 0;
 
+  // перегрев (>8 за ход)
   if (player.lastTurnGain > 8) {
     player.skip = true;
   }
 }
 
-server.listen(process.env.PORT || 3001, () =>
-  console.log("Server running")
-);
+server.listen(process.env.PORT || 3001, () => {
+  console.log("Server running 🚀");
+});
