@@ -17,13 +17,13 @@ const cells = [
 ];
 
 const scandalCards = [
-  {text:"Перегрел аудиторию -1", hype:-1},
-  {text:"Громкий заголовок -2", hype:-2},
-  {text:"Это монтаж -3", hype:-3},
-  {text:"Меня взломали -3 всем", hype:-3, all:true},
-  {text:"Подписчики в шоке -4", hype:-4},
-  {text:"Удаляй пока не поздно -5", hype:-5},
-  {text:"Это контент -5 и пропуск", hype:-5, skip:true}
+  {text:"-1 хайп", hype:-1},
+  {text:"-2 хайп", hype:-2},
+  {text:"-3 хайп", hype:-3},
+  {text:"-3 всем", hype:-3, all:true},
+  {text:"-4 хайп", hype:-4},
+  {text:"-5 хайп", hype:-5},
+  {text:"-5 и пропуск", hype:-5, skip:true}
 ];
 
 io.on("connection", socket => {
@@ -43,8 +43,7 @@ io.on("connection", socket => {
       position:0,
       hype:0,
       skip:false,
-      lastDice:0,
-      lastCard:null
+      lastDice:0
     });
 
     socket.emit("playerId", socket.id);
@@ -73,7 +72,10 @@ io.on("connection", socket => {
 
     handleCell(player, game);
 
-    if(player.hype < 0) player.hype = 0;
+    // защита от отрицательного хайпа
+    game.players.forEach(p=>{
+      if(p.hype < 0) p.hype = 0;
+    });
 
     if(player.hype >= 100){
       io.to(room).emit("gameOver", player);
