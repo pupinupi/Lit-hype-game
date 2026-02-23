@@ -11,19 +11,36 @@ app.use(express.static("public"));
 let rooms = {};
 
 const cells = [
-  "start","h3","h2","scandal","risk","h2","scandal","h3","h5",
-  "zero","jail","h3","risk","h3","skip","h2","scandal","h8",
-  "zero","h4"
+  {type:"start"},
+  {type:"hype",value:3},
+  {type:"hype",value:2},
+  {type:"scandal"},
+  {type:"risk"},
+  {type:"hype",value:2},
+  {type:"scandal"},
+  {type:"hype",value:3},
+  {type:"hype",value:5},
+  {type:"zero"},
+  {type:"jail"},
+  {type:"hype",value:3},
+  {type:"risk"},
+  {type:"hype",value:3},
+  {type:"skip"},
+  {type:"hype",value:2},
+  {type:"scandal"},
+  {type:"hype",value:8},
+  {type:"zero"},
+  {type:"hype",value:4}
 ];
 
 const scandalCards = [
-  {text:"-1 хайп", hype:-1},
-  {text:"-2 хайп", hype:-2},
-  {text:"-3 хайп", hype:-3},
-  {text:"-3 всем", hype:-3, all:true},
-  {text:"-4 хайп", hype:-4},
-  {text:"-5 хайп", hype:-5},
-  {text:"-5 и пропуск", hype:-5, skip:true}
+  {text:"Перегрел аудиторию 🔥 -1", hype:-1},
+  {text:"Громкий заголовок 🫣 -2", hype:-2},
+  {text:"Это монтаж 😱 -3", hype:-3},
+  {text:"Меня взломали #️⃣ -3 всем", hype:-3, all:true},
+  {text:"Подписчики в шоке 😮 -4", hype:-4},
+  {text:"Удаляй пока не поздно 🤫 -5", hype:-5},
+  {text:"Это контент 🙄 -5 и пропуск", hype:-5, skip:true}
 ];
 
 io.on("connection", socket => {
@@ -56,10 +73,10 @@ io.on("connection", socket => {
     if(!game) return;
 
     const player = game.players[game.turn];
-    if(!player || player.id !== socket.id) return;
+    if(player.id !== socket.id) return;
 
     if(player.skip){
-      player.skip=false;
+      player.skip = false;
       nextTurn(game);
       io.to(room).emit("updateRoom", game);
       return;
@@ -68,11 +85,13 @@ io.on("connection", socket => {
     const dice = Math.floor(Math.random()*6)+1;
     player.lastDice = dice;
 
-    player.position = (player.position + dice) % cells.length;
+    player.position += dice;
+    if(player.position > 19){
+      player.position -= 20;
+    }
 
-    handleCell(player, game);
+    processCell(player, game);
 
-    // защита от отрицательного хайпа
     game.players.forEach(p=>{
       if(p.hype < 0) p.hype = 0;
     });
@@ -89,45 +108,50 @@ io.on("connection", socket => {
 
 });
 
-function handleCell(player, game){
+function processCell(player, game){
 
   const cell = cells[player.position];
 
-  if(cell.startsWith("h")){
-    player.hype += parseInt(cell.slice(1));
+  if(cell.type==="hype"){
+    player.hype += cell.value;
   }
 
-  if(cell==="zero"){
+  if(cell.type==="zero"){
     player.hype = 0;
   }
 
-  if(cell==="jail"){
+  if(cell.type==="jail"){
     player.hype = Math.floor(player.hype/2);
     player.skip = true;
   }
 
-  if(cell==="skip"){
+  if(cell.type==="skip"){
     player.skip = true;
   }
 
-  if(cell==="risk"){
+  if(cell.type==="risk"){
     const r = Math.floor(Math.random()*6)+1;
     player.hype += r<=3 ? -5 : 5;
   }
 
-  if(cell==="scandal"){
+  if(cell.type==="scandal"){
     const card = scandalCards[Math.floor(Math.random()*scandalCards.length)];
+
     if(card.all){
       game.players.forEach(p=>p.hype += card.hype);
     } else {
       player.hype += card.hype;
     }
+
     if(card.skip) player.skip = true;
   }
 }
 
 function nextTurn(game){
-  game.turn = (game.turn + 1) % game.players.length;
+  game.turn++;
+  if(game.turn >= game.players.length){
+    game.turn = 0;
+  }
 }
 
-server.listen(3000, ()=>console.log("Server running"));
+server.listen(3000);
