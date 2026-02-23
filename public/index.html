@@ -76,10 +76,10 @@ let myColor="yellow";
 let currentRoom=null;
 
 const positions = [
-{x:110,y:580},{x:110,y:500},{x:110,y:420},{x:110,y:340},{x:110,y:260},
-{x:110,y:180},{x:200,y:120},{x:320,y:100},{x:450,y:100},{x:580,y:100},
-{x:700,y:100},{x:820,y:120},{x:900,y:200},{x:900,y:320},{x:900,y:440},
-{x:820,y:580},{x:700,y:580},{x:580,y:580},{x:450,y:580},{x:320,y:580}
+{x:140,y:610},{x:140,y:500},{x:140,y:390},{x:140,y:280},{x:140,y:170},
+{x:200,y:120},{x:320,y:100},{x:450,y:100},{x:580,y:100},{x:710,y:100},
+{x:830,y:130},{x:900,y:230},{x:900,y:350},{x:900,y:470},{x:830,y:610},
+{x:700,y:610},{x:580,y:610},{x:450,y:610},{x:320,y:610},{x:200,y:610}
 ];
 
 function setColor(c){ myColor=c; }
@@ -112,6 +112,10 @@ function rollDice(){
 }
 
 function render(){
+  document.getElementById("dice").innerText = 
+"🎲 " + gameState.players[gameState.turn === 0 
+? gameState.players.length-1 
+: gameState.turn-1].lastDice;
   const board=document.getElementById("board");
   board.innerHTML="";
 
